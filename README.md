@@ -1,5 +1,5 @@
 # SaorTech-cloud-services
-The purpose of this project is to make setting up and configuring open-source alternatives to commonly used web services as simple as possible. I don't like relying of services like dropbox of gmail so whenever I find a good and free alternative I'll add it to this repo. This repository contains scripts for various open-source services and more are being added whenever I feel like I need them in my life. Run any of the scripts on a VPS or an instance to set it up. So far only tested for Ubuntu v20.
+The purpose of this project is to make setting up and configuring open-source alternatives to commonly used web services as simple as possible. I don't like relying of services like dropbox of gmail so whenever I find a good and free alternative I'll create an automation script and add it to this repo. This repository contains scripts for various open-source services and more are being added whenever I feel like I need them in my life. Run any of the scripts on a VPS or an instance to set it up. So far only tested for Ubuntu v20.
 
 
 ## Instalation guide
