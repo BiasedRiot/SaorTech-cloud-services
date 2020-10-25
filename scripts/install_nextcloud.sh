@@ -1,7 +1,9 @@
 #!/bin/bash
 
 my_domain="nextcloud.example.com"
-
+# Used for SSL certificates. Don't worry they wont send you any news or -
+# annoying stuff it's specified when running the certbot command.
+my_email="test@protonmail.com" 
 
 echo "Starting Installation"
 
@@ -80,9 +82,9 @@ cp /etc/apache2/sites-available/000-default.conf /etc/apache2/sites-enabled/000-
 systemctl restart apache2
 
 (sleep 2
-echo "eoincooganbrowsing@protonmail.com"
+echo $my_email
 sleep 2
-echo "A") | sudo certbot --apache -d nextcloud.eoincoogan.com --redirect
+echo "A") | sudo certbot --apache -d $my_domain --redirect
 
 
 
