@@ -150,11 +150,11 @@ service postfix restart
 
 echo "
 submission inet n       -       -       -       -       smtpd
--o syslog_name=postfix/submission
--o smtpd_tls_security_level=encrypt
--o smtpd_sasl_auth_enable=yes
--o smtpd_client_restrictions=permit_sasl_authenticated,reject
--o content_filter=spamassassin"  > /etc/postfix/master.cf
+  -o syslog_name=postfix/submission
+  -o smtpd_tls_security_level=encrypt
+  -o smtpd_sasl_auth_enable=yes
+  -o smtpd_client_restrictions=permit_sasl_authenticated,reject
+  -o content_filter=spamassassin"  > /etc/postfix/master.cf
 service postfix restart
 
 # Configure Dovecot
@@ -320,6 +320,12 @@ service opendkim restart
 postconf -e "smtpd_milters = inet:localhost:8891"
 postconf -e 'non_smtpd_milters = $smtpd_milters'
 service opendkim reload
+
+
+# Restarting everything
+newaliases
+postfix start
+service dovecot restart
 
 
 echo "Congrats the script is finised. Make sure that neccessary ports are open so you can send mail!"
