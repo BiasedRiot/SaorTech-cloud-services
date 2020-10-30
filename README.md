@@ -22,7 +22,7 @@ Then just run the script.
 
 
 ## Current services availible
-* Nextcloud
+* Nextcloud (Storage/Calendar)
 * Mail server (Postfix and Dovecot)
 
 ## Services being added
