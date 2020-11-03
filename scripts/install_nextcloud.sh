@@ -105,4 +105,46 @@ sed -i "s/memory_limit = 128M/memory_limit = 512M/" /etc/php/7.3/apache2/php.ini
 sed -i "s/post_max_size = 8M/post_max_size = 512M/" /etc/php/7.3/apache2/php.ini
 systemctl restart apache2
 
-#Finish rest of security issues
+#Enabling HSTS and other security settings
+echo "
+<IfModule mod_ssl.c>
+<VirtualHost *:443>
+        ServerName $my_domain
+        <IfModule mod_headers.c>
+          Header always set Strict-Transport-Security \"max-age=15552000; includeSubDomains; preload\"
+        </IfModule>
+
+	<Directory /var/www/html/>
+		Options +FollowSymlinks
+		AllowOverride All
+	</Directory>
+        ServerAdmin webmaster@localhost
+        DocumentRoot /var/www/html
+
+
+        ErrorLog ${APACHE_LOG_DIR}/error.log
+        CustomLog ${APACHE_LOG_DIR}/access.log combined
+
+
+ServerAlias $my_domain
+SSLCertificateFile /etc/letsencrypt/live/$my_domain/fullchain.pem
+SSLCertificateKeyFile /etc/letsencrypt/live/$my_domain/privkey.pem
+Include /etc/letsencrypt/options-ssl-apache.conf
+</VirtualHost>
+</IfModule>
+" > /etc/apache2/sites-enabled/000-default-le-ssl.conf
+
+sed -i "s/;opcache.enable=1/opcache.enable=1/" /etc/php/7.3/apache2/php.ini 
+sed -i "s/;opcache.enable_cli=0/opcache.enable_cli=1/" /etc/php/7.3/apache2/php.ini 
+sed -i "s/;opcache.interned_strings_buffer=8/opcache.interned_strings_buffer=8/" /etc/php/7.3/apache2/php.ini 
+sed -i "s/;opcache.max_accelerated_files=10000/opcache.max_accelerated_files=10000/" /etc/php/7.3/apache2/php.ini 
+sed -i "s/;opcache.memory_consumption=128/opcache.memory_consumption=128/" /etc/php/7.3/apache2/php.ini 
+sed -i "s/;opcache.save_comments=1/opcache.save_comments=1/" /etc/php/7.3/apache2/php.ini 
+sed -i "s/;opcache.revalidate_freq=2/opcache.revalidate_freq=1/" /etc/php/7.3/apache2/php.ini 
+
+systemctl restart apache2
+a2enmod headers
+
+-u www-data php /var/www/html/./occ db:convert-filecache-bigint
+
+echo "Congradulations nextcloud is officially set up "
