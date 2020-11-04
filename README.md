@@ -12,12 +12,12 @@ git clone https://github.com/CoogyEoin/SaorTech-cloud-services.git
 
 ```
 
-Figure out which services you want (Discussed below) and edit the values such as email, domain, user etc... in the scripts.
+Figure out which services you want (Discussed below) and add the neccessary values with CLI arguments (email, domain, user etc...)
 
 Then just run the script.
 
 ```
-./SaorTech-cloud-services/<Whichever service you want>
+./SaorTech-cloud-services/<Whichever service you want> <Whichever flags needed>
 ```
 
 
@@ -35,8 +35,6 @@ Then just run the script.
 
 ## Additional Features To Add
 
-* Additional Configuation of Nextcloud (Calander etc...)
 * Get mailserver fully operational (OpenDKIR, ports etc)
-* Interactive mode to pick and choose specific services + insert details like domains
-* Microservice architecture 
+* Add script for running specific scripts eg: only mail and nextcloud
 * Add support for additional Operating Systems and versions 

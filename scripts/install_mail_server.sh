@@ -1,7 +1,7 @@
 ##!/bin/bash
 
 my_domain="example.com"
-FQDN="mail.example.com"
+FQDN="mail.${my_domain}"
 
 my_password="SETAGOODPASSWORDFORFECKSAKE"
 
@@ -19,6 +19,29 @@ email1="${user1}@${my_domain}"
 alias_email1="${alias1}@${my_domain}"
 alias_email2="${alias2}@${my_domain}"
 alias_email3="${alias3}@${my_domain}"
+
+# CLI Arguments (Specify -e email, -u user, -p password or -d domain )
+TEMP=`getopt -o u:e:d:p: --long user:,email:,domain:,password:, -- "$@"`
+eval set -- "$TEMP"
+
+# extract options and their arguments into variables.
+while true ; do
+    case "$1" in
+        -e|--email)
+            $my_email=$2 ; shift 2 ;;
+        -p|--password)
+            $my_password=$2 ; shift 2 ;;
+        -u|--user)
+            $user1=$2 ; shift 2 ;;
+        -d|--domain)
+            $my_domain=$2 ; shift 2;;
+        -f|--fqdn)
+            $FQDN=$2 ; shift 2;;
+        --) shift ; break ;;
+        *) echo "Internal error!" ; exit 1 ;;
+    esac
+done
+
 
 # Installing Postfix
 echo "Installing requirements"
