@@ -1,22 +1,20 @@
 #!/bin/bash
 
-# Example Variables
-my_domain="nextcloud.example.com"
-# Used for SSL certificates. Don't worry they wont send you any news or -
-# annoying stuff it's specified when running the certbot command.
-my_email="test@protonmail.com"
-
 # CLI Arguments (Specify -e email or -d domain when running script)
 TEMP=`getopt -o e:d: --long email:,domain: -- "$@"`
 eval set -- "$TEMP"
 
+# The email (my_email) is used for SSL certificates. Don't worry they wont send you any news or -
+# annoying stuff it's specified when running the certbot command.
+
+# my_domain is the domain of the nextcloud instance eg: nextcloud.example.com
 # extract options and their arguments into variables.
 while true ; do
     case "$1" in
         -e|--email)
-            $my_email=$2 ; shift 2 ;;
+            my_email=$2 ; shift 2 ;;
         -d|--domain)
-            $my_domain=$2 ; shift 2;;
+            my_domain=$2 ; shift 2;;
         --) shift ; break ;;
         *) echo "Internal error!" ; exit 1 ;;
     esac

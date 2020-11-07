@@ -1,11 +1,4 @@
-##!/bin/bash
-
-my_domain="example.com"
-FQDN="mail.${my_domain}"
-
-my_password="SETAGOODPASSWORDFORFECKSAKE"
-
-user1="eoin"
+#!/bin/bash
 
 # It is good to have multiple emails for compartmentalising your -
 # online activity. For example an email for social media, buying stuff online -
@@ -14,34 +7,34 @@ alias1="social"
 alias2="purchasing"
 alias3="primary"
 
-email1="${user1}@${my_domain}"
-
-alias_email1="${alias1}@${my_domain}"
-alias_email2="${alias2}@${my_domain}"
-alias_email3="${alias3}@${my_domain}"
 
 # CLI Arguments (Specify -e email, -u user, -p password or -d domain )
-TEMP=`getopt -o u:e:d:p: --long user:,email:,domain:,password:, -- "$@"`
+TEMP=`getopt -o f:u:e:d:p: --long fqdn:,user:,email:,domain:,password:, -- "$@"`
 eval set -- "$TEMP"
 
 # extract options and their arguments into variables.
 while true ; do
     case "$1" in
         -e|--email)
-            $my_email=$2 ; shift 2 ;;
+            my_email=$2 ; shift 2 ;;
         -p|--password)
-            $my_password=$2 ; shift 2 ;;
+            my_password=$2 ; shift 2 ;;
         -u|--user)
-            $user1=$2 ; shift 2 ;;
+            user1=$2 ; shift 2 ;;
         -d|--domain)
-            $my_domain=$2 ; shift 2;;
+            my_domain=$2 ; shift 2;;
         -f|--fqdn)
-            $FQDN=$2 ; shift 2;;
+            FQDN=$2 ; shift 2;;
         --) shift ; break ;;
         *) echo "Internal error!" ; exit 1 ;;
     esac
 done
 
+email1="${user1}@${my_domain}"
+
+alias_email1="${alias1}@${my_domain}"
+alias_email2="${alias2}@${my_domain}"
+alias_email3="${alias3}@${my_domain}"
 
 # Installing Postfix
 echo "Installing requirements"
@@ -59,7 +52,7 @@ service apache2 stop
 (sleep 2
 echo $email1
 sleep 2
-echo "A") | sudo certbot --standalone -d $FQDN --redirect
+echo "A") | certbot --standalone -d $FQDN --redirect
 
 service apache2 restart
 
@@ -106,7 +99,7 @@ echo "
 INSERT INTO servermail.virtual_aliases (id, domain_id, source, destination)
 VALUES ('1', '1', '$alias_email1', '$email1'),
 ('2', '1', '$alias_email2', '$email1'),
-('3', '1', '$alias_email3', '$email1');" | mariadb
+('3', '1', '$alias_email3', '$email1');") | mariadb
 
 # Configure Postfix
 echo "Configuring Postfix"
@@ -122,10 +115,7 @@ postconf -e 'smtpd_tls_auth_only = yes'
 postconf -e 'smtpd_sasl_type = dovecot'
 postconf -e 'smtpd_sasl_path = private/auth'
 postconf -e 'smtpd_sasl_auth_enable = yes'
-postconf -e 'smtpd_recipient_restrictions =
-permit_sasl_authenticated,
-permit_mynetworks,
-reject_unauth_destination'
+postconf -e 'smtpd_recipient_restrictions = permit_sasl_authenticated, permit_mynetworks, reject_unauth_destination'
 
 #Enable Localhost for SQL table
 postconf -e 'mydestination = localhost'
@@ -305,7 +295,7 @@ service dovecot restart
 echo $user1) | adduser spamd --disabled-login
 
 
-sudo update-rc.d spamassassin enable
+update-rc.d spamassassin enable
 
 sed -i 's/OPTIONS="--create-prefs --max-children 5 --helper-home-dir"/OPTIONS="--create-prefs --max-children 5 --username spamd --helper-home-dir ${SPAMD_HOME} -s ${SPAMD_HOME}spamd.log"/' /etc/default/spamassassin
 
@@ -335,10 +325,11 @@ service postfix restart
 apt install opendkim opendkim-tools -y
 opendkim opendkim-genkey -D /etc/dkimkeys -d $FQDN -s 2020
 
-sed -i "s/#Domain                 example.com/Domain    $my_domain/" /etc/opendkim.conf
-sed -i "s/#Selector               2007/Selector 2020/" /etc/opendkim.conf
-sed -i "s/Socket                  local:\/run\/opendkim\/opendkim.sock/Socket   inet:8891@localhost/" /etc/opendkim.conf
-sed -i "s/#KeyFile                \/etc\/dkimkeys\/dkim.key/KeyFile  \/etc\/dkimkeys\/2020.private/" /etc/opendkim.conf
+sed -i "s/#Domain                 example.com/Domain                 eoincoogan.com/" /etc/opendkim.conf 
+sed -i "s/#Selector/Selector/" /etc/opendkim.conf
+sed -i "s/2007/2020/" /etc/opendkim.conf
+sed -i "s/local:\/run\/opendkim\/opendkim.sock/inet:8891@localhost/" /etc/opendkim.conf
+echo "KeyFile  /etc/dkimkeys/2020.private/" >> /etc/opendkim.conf
 service opendkim restart
 postconf -e "smtpd_milters = inet:localhost:8891"
 postconf -e 'non_smtpd_milters = $smtpd_milters'
