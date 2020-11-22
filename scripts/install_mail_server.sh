@@ -38,30 +38,25 @@ alias_email3="${alias3}@${my_domain}"
 
 # Installing Postfix
 echo "Installing requirements"
-apt update
+apt update -y
 debconf-set-selections <<< "postfix postfix/mailname string $my_domain"
 debconf-set-selections <<< "postfix postfix/main_mailer_type string 'Internet Site'"
 
-apt install postfix postfix-mysql dovecot-core dovecot-imapd dovecot-lmtpd dovecot-pop3d dovecot-mysql spamassassin spamc -y
+apt install apache2 postfix postfix-mysql dovecot-core dovecot-imapd dovecot-lmtpd dovecot-pop3d dovecot-mysql spamassassin spamc -y
+
 #Setting up Encryption
 echo "Setting up encryption"
 apt install certbot -y
-
 service apache2 stop
-
-(sleep 2
-echo $email1
-sleep 2
-echo "A") | certbot --standalone -d $FQDN --redirect
-
+certbot certonly --standalone -d $my_domain --redirect
 service apache2 restart
 
 # Create DB
 echo "Creating DB"
 (sleep 2
-echo "CREATE DATABASE servermail;"
+echo "CREATE DATABASE usermail;"
 sleep 2
-echo "GRANT SELECT ON servermail.* TO 'usermail'@'127.0.0.1' IDENTIFIED BY 'mailpassword';"
+echo "GRANT SELECT ON usermail.* TO 'usermail'@'127.0.0.1' IDENTIFIED BY '$my_password';"
 sleep 2
 echo "FLUSH PRIVILEGES;") | mariadb
 
@@ -69,7 +64,7 @@ echo "FLUSH PRIVILEGES;") | mariadb
 # Create tables
 echo "Creating tables"
 (sleep 2
-echo "USE servermail;"
+echo "USE usermail;"
 sleep 2
 echo "CREATE TABLE virtual_domains (id  INT NOT NULL AUTO_INCREMENT,
 name VARCHAR(50) NOT NULL, PRIMARY KEY (id) ) ENGINE=InnoDB DEFAULT CHARSET=utf8;"
@@ -88,15 +83,15 @@ FOREIGN KEY (domain_id) REFERENCES virtual_domains(id) ON DELETE CASCADE
 #Adding in Data
 echo "Adding data to tables"
 (sleep 2
-echo "INSERT INTO servermail.virtual_domains (id , name)
-VALUES ('1', '$my_domain'), ('2', '$FQDN');"
+echo "INSERT INTO usermail.virtual_domains (id , name)
+VALUES ('1', '$my_domain');"
 sleep 2
 echo "
-INSERT INTO servermail.virtual_users (id, domain_id, password , email)
+INSERT INTO usermail.virtual_users (id, domain_id, password , email)
 VALUES ('1', '1', ENCRYPT('$my_password'), '$email1');"
 sleep 2
 echo "
-INSERT INTO servermail.virtual_aliases (id, domain_id, source, destination)
+INSERT INTO usermail.virtual_aliases (id, domain_id, source, destination)
 VALUES ('1', '1', '$alias_email1', '$email1'),
 ('2', '1', '$alias_email2', '$email1'),
 ('3', '1', '$alias_email3', '$email1');") | mariadb
@@ -106,8 +101,8 @@ echo "Configuring Postfix"
 cp /etc/postfix/main.cf /etc/postfix/main.cf.orig
 
 #Configure TLS
-postconf -e "smtpd_tls_cert_file=/etc/letsencrypt/live/$FQDN/fullchain.pem"
-postconf -e "smtpd_tls_key_file=/etc/letsencrypt/live/$FQDN/privkey.pem"
+postconf -e "smtpd_tls_cert_file=/etc/letsencrypt/live/$my_domain/fullchain.pem"
+postconf -e "smtpd_tls_key_file=/etc/letsencrypt/live/$my_domain/privkey.pem"
 postconf -e 'ssmtpd_use_tls=yes'
 postconf -e 'smtpd_tls_auth_only = yes'
 
@@ -115,12 +110,13 @@ postconf -e 'smtpd_tls_auth_only = yes'
 postconf -e 'smtpd_sasl_type = dovecot'
 postconf -e 'smtpd_sasl_path = private/auth'
 postconf -e 'smtpd_sasl_auth_enable = yes'
+postconf -e 'smtp_tls_security_level = may'
 postconf -e 'smtpd_recipient_restrictions = permit_sasl_authenticated, permit_mynetworks, reject_unauth_destination'
 
 #Enable Localhost for SQL table
 postconf -e 'mydestination = localhost'
 
-postconf -e "myhostname = $FQDN"
+postconf -e "myhostname = vps1.$my_domain"
 
 #Configure Virtual Domains
 postconf -e 'virtual_transport = lmtp:unix:private/dovecot-alias_email1lmtp'
@@ -131,9 +127,9 @@ postconf -e 'virtual_alias_maps = mysql:/etc/postfix/mysql-virtual-alias-maps.cf
 
 #Create domain config file
 echo "user = usermail
-password = mailpassword
+password = $my_password
 hosts = 127.0.0.1
-dbname = servermail
+dbname = usermail
 query = SELECT 1 FROM virtual_domains WHERE name='%s'" > /etc/postfix/mysql-virtual-mailbox-domains.cf
 
 service postfix restart
@@ -147,27 +143,79 @@ fi
 
 # Adding emails
 echo "user = usermail
-password = mailpassword
+password = $my_password
 hosts = 127.0.0.1
-dbname = servermail
+dbname = usermail
 query = SELECT 1 FROM virtual_users WHERE email='%s'" > /etc/postfix/mysql-virtual-mailbox-maps.cf 
 
 # Adding aliases
 echo "user = usermail
-password = mailpassword
+password = $my_password
 hosts = 127.0.0.1
-dbname = servermail
+dbname = usermail
 query = SELECT destination FROM virtual_aliases WHERE source='%s'" > /etc/postfix/mysql-virtual-alias-maps.cf
 
 service postfix restart
 
-echo "
-submission inet n       -       -       -       -       smtpd
+echo '
+smtp      inet  n       -       y       -       -       smtpd
+  -o content_filter=spamassassin
+submission inet n       -       y       -       -       smtpd
   -o syslog_name=postfix/submission
   -o smtpd_tls_security_level=encrypt
   -o smtpd_sasl_auth_enable=yes
+  -o smtpd_tls_auth_only=yes
+  -o smtpd_reject_unlisted_recipient=no
   -o smtpd_client_restrictions=permit_sasl_authenticated,reject
-  -o content_filter=spamassassin"  > /etc/postfix/master.cf
+  -o smtpd_recipient_restrictions=permit_mynetworks,permit_sasl_authenticated,reject
+  -o smtpd_relay_restrictions=permit_sasl_authenticated,reject
+  -o milter_macro_daemon_name=ORIGINATING
+
+pickup    unix  n       -       y       60      1       pickup
+cleanup   unix  n       -       y       -       0       cleanup
+qmgr      unix  n       -       n       300     1       qmgr
+#qmgr     unix  n       -       n       300     1       oqmgr
+tlsmgr    unix  -       -       y       1000?   1       tlsmgr
+rewrite   unix  -       -       y       -       -       trivial-rewrite
+bounce    unix  -       -       y       -       0       bounce
+defer     unix  -       -       y       -       0       bounce
+trace     unix  -       -       y       -       0       bounce
+verify    unix  -       -       y       -       1       verify
+flush     unix  n       -       y       1000?   0       flush
+proxymap  unix  -       -       n       -       -       proxymap
+proxywrite unix -       -       n       -       1       proxymap
+smtp      unix  -       -       y       -       -       smtp
+relay     unix  -       -       y       -       -       smtp
+        -o syslog_name=postfix/$service_name
+#       -o smtp_helo_timeout=5 -o smtp_connect_timeout=5
+showq     unix  n       -       y       -       -       showq
+error     unix  -       -       y       -       -       error
+retry     unix  -       -       y       -       -       error
+discard   unix  -       -       y       -       -       discard
+local     unix  -       n       n       -       -       local
+virtual   unix  -       n       n       -       -       virtual
+lmtp      unix  -       -       y       -       -       lmtp
+anvil     unix  -       -       y       -       1       anvil
+scache    unix  -       -       y       -       1       scache
+postlog   unix-dgram n  -       n       -       1       postlogd
+
+maildrop  unix  -       n       n       -       -       pipe
+  flags=DRhu user=vmail argv=/usr/bin/maildrop -d ${recipient}
+uucp      unix  -       n       n       -       -       pipe
+  flags=Fqhu user=uucp argv=uux -r -n -z -a$sender - $nexthop!rmail ($recipient)
+ifmail    unix  -       n       n       -       -       pipe
+  flags=F user=ftn argv=/usr/lib/ifmail/ifmail -r $nexthop ($recipient)
+bsmtp     unix  -       n       n       -       -       pipe
+  flags=Fq. user=bsmtp argv=/usr/lib/bsmtp/bsmtp -t$nexthop -f$sender $recipient
+scalemail-backend unix  -       n       n       -       2       pipe
+  flags=R user=scalemail argv=/usr/lib/scalemail/bin/scalemail-store ${nexthop} ${user} ${extension}
+mailman   unix  -       n       n       -       -       pipe
+  flags=FR user=list argv=/usr/lib/mailman/bin/postfix-to-mailman.py
+  ${nexthop} ${user}
+spamassassin unix -     n       n       -       -       pipe
+  user=spamd argv=/usr/bin/spamc -f -e
+  /usr/sbin/sendmail -oi -f ${sender} ${recipient}
+' > /etc/postfix/master.cf
 service postfix restart
 
 # Configure Dovecot
@@ -179,116 +227,47 @@ cp /etc/dovecot/conf.d/10-master.conf /etc/dovecot/conf.d/10-master.conf.orig
 cp /etc/dovecot/conf.d/10-ssl.conf /etc/dovecot/conf.d/10-ssl.conf.orig
 
 
-sed -i "s?#!include conf.d/*.conf?!include conf.d/*.conf?" /etc/dovecot/dovecot.conf
+echo "ssl_cert = </etc/letsencrypt/live/$my_domain/fullchain.pem
+ssl_key = </etc/letsencrypt/live/$my_domain//privkey.pem
 
-sed -i "25i protocols = imap lmtp pop3" /etc/dovecot/dovecot.conf
+mail_location = maildit:/home/$user1/mail/%d/%n
+mail_privileged_group = $user1
 
-sed -i "s/mail_location = mbox:~\/mail:INBOX=\/var\/mail\/%u/mail_location = maildir:\/var\/mail\/vhosts\/%d\/%n/" /etc/dovecot/conf.d/10-mail.conf
-sed -i "s/#mail_privileged_group = mail/mail_privileged_group = mail/" /etc/dovecot/conf.d/10-mail.conf
-
-#Housekeeping
-mkdir -p /var/mail/vhosts/$my_domain
-groupadd -g 5000 vmail 
-useradd -g vmail -u 5000 vmail -d /var/mail
-chown -R vmail:vmail /var/mail
-
-
-echo "disable_plaintext_auth = yes
-auth_mechanisms = plain login
-!include auth-sql.conf.ext
-" > /etc/dovecot/conf.d/10-auth.conf
-
-#Create conf file
-echo "passdb {
+passdb {
   driver = sql
   args = /etc/dovecot/dovecot-sql.conf.ext
 }
+
 userdb {
   driver = static
-  args = uid=vmail gid=vmail home=/var/mail/vhosts/%d/%n
-} " > /etc/dovecot/conf.d/auth-sql.conf.ext
+  args = uid=$user1 gid=$user1 home=/home/$user1/mail/%d/%n
+}
+" > /etc/dovecot/dovecot.conf
 
+#Housekeeping
+mkdir /home/$user1/mail
+mkdir /home/$user1/mail/$my_domain
+groupadd -g 5000 $user1 
+useradd -g $user1 -u 5000 $user1 -d /home/$user1/mail
+chown -R $user1:$user1 /home/$user1/mail
 
 # Modify mysql
-sed -i "s/#driver = /driver = mysql/" /etc/dovecot/dovecot-sql.conf.ext
-sed -i "s/#connect =/connect = host=127.0.0.1 dbname=servermail user=usermail password=mailpassword/" /etc/dovecot/dovecot-sql.conf.ext
-sed -i "s/#default_pass_scheme = MD5/default_pass_scheme = SHA512-CRYPT/" /etc/dovecot/dovecot-sql.conf.ext
-echo "password_query = SELECT email as user, password FROM virtual_users WHERE email='%u';" >> /etc/dovecot/dovecot-sql.conf.ext
-chown -R vmail:dovecot /etc/dovecot
-chmod -R o-rwx /etc/dovecot 
-
-
-
 echo "
-service imap-login {
-  inet_listener imap {
-    port = 0
-  }
-  inet_listener imaps {
-
-  }
-
-}
-service pop3-login {
-  inet_listener pop3 {
-
-  }
-  inet_listener pop3s {
-
-  }
-}
-
-service lmtp {
-  unix_listener /var/spool/postfix/private/dovecot-lmtp {
-   mode = 0600
-   user = postfix
-   group = postfix
-  }
-
-}
-
-service imap {
-
-}
-
-service pop3 {
-
-}
-
-service auth {
-
-  unix_listener /var/spool/postfix/private/auth {
-    mode = 0666
-    user = postfix
-    group = postfix
-  }
-
-  unix_listener auth-userdb {
-   mode = 0600
-   user = vmail
-  }
-
-  user = dovecot
-}
-
-service auth-worker {
-  user = vmail
-}
-
-service dict {
-
-  unix_listener dict {
-
-  }
-}" > /etc/dovecot/conf.d/10-master.conf
-
-# Enable SSL
-sed -i "s/ssl = yes/ssl = required/" /etc/dovecot/conf.d/10-ssl.conf
-sed -i "s%ssl_cert = </etc/ssl/certs/dovecot.pem%ssl_cert = smtpd_tls_cert_file=/etc/letsencrypt/live/$FQDN/fullchain.pem%" /etc/dovecot/conf.d/10-ssl.conf
-sed -i "s%ssl_key = </etc/ssl/private/dovecot.pem%smtpd_tls_key_file=/etc/letsencrypt/live/$FQDN/privkey.pem%" /etc/dovecot/conf.d/10-ssl.conf
+driver = mariadb
+connect = host=localhost dbname=mail user=mail password=$my_password
+default_pass_schema = SHA512-CRYPT
+password_query = SELECT email as user, password FROM virtual_users WHERE email='%u';
+" > /etc/dovecot/dovecot-sql.conf.ext
+chown -R $user1:dovecot /etc/dovecot
+chown -R $user1:dovecot /var/run/dovecot/auth-userdb
 
 service dovecot restart
 
+
+# Enable ports
+ufw allow 25
+ufw allow 587
+ufw allow 993
 
 # Setting Up Spam Assassin
 (sleep 2
@@ -323,16 +302,52 @@ service postfix restart
 
 # OpenDKIM setup
 apt install opendkim opendkim-tools -y
-opendkim opendkim-genkey -D /etc/dkimkeys -d $FQDN -s 2020
 
-sed -i "s/#Domain                 example.com/Domain                 eoincoogan.com/" /etc/opendkim.conf 
-sed -i "s/#Selector/Selector/" /etc/opendkim.conf
-sed -i "s/2007/2020/" /etc/opendkim.conf
-sed -i "s/local:\/run\/opendkim\/opendkim.sock/inet:8891@localhost/" /etc/opendkim.conf
-echo "KeyFile  /etc/dkimkeys/2020.private/" >> /etc/opendkim.conf
+echo "
+Syslog                  yes
+UMask                   002
+
+AutoRestart             yes
+AutoRestartRate         10/1h
+Syslog                  yes
+SyslogSuccess           yes
+LogWhy                  yes
+
+Canonicalization        relaxed/simple
+
+ExternalIgnoreList      refile:/etc/opendkim/TrustedHosts
+InternalHosts           refile:/etc/opendkim/TrustedHosts
+KeyTable                refile:/etc/opendkim/KeyTable
+SigningTable            refile:/etc/opendkim/SigningTable
+
+Mode                    sv
+Socket                  inet:8892@localhost
+
+PidFile               /var/run/opendkim/opendkim.pid
+SignatureAlgorithm    rsa-SHA256
+UserID                opendkim:opendkim
+OversignHeaders       From
+" > /etc/opendkim.conf
+
+echo "Socket                  inet:8892@localhost" >> /etc/default/opendkim
+
+echo "
+127.0.0.1
+localhost
+192.168.0.1/24
+::1
+
+*.$my_domain
+" > /etc/opendkim/TrustedHosts
+
+echo "mail._domainkey.$my_domain $my_domain:mail:/etc/opendkim/keys/$user1/mail.private" > /etc/opendkim/KeyTable
+
+mkdir /etc/opendkim/keys/$user1
+cd /etc/opendkim/keys/$user1
+opendkim-genkey -s usermail -d $my_domains 
+chown opendkim:opendkim mail.private
+
 service opendkim restart
-postconf -e "smtpd_milters = inet:localhost:8891"
-postconf -e 'non_smtpd_milters = $smtpd_milters'
 service opendkim reload
 
 
@@ -341,8 +356,7 @@ newaliases
 postfix start
 service dovecot restart
 
-
-echo "Congrats the script is finised. Make sure that neccessary ports are open so you can send mail!"
+echo "Congrats the script is finised. Check out /var/log/mail.log for any logs or errors"
 
 
 
