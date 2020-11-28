@@ -15,9 +15,7 @@ while true ; do
 done
 
 apt-get --purge autoremove postfix postfix-mysql dovecot-core dovecot-imapd dovecot-lmtpd dovecot-pop3d dovecot-mysql spamassassin spamc opendkim opendkim-tools -y
-rm -r /var/www/website/postfixadmin/
 rm -r /var/lib/dovecot/
-rm -r /var/mail/vhosts/
 rm -r /etc/dovecot
 
 echo "Removing DB"

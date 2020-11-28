@@ -69,16 +69,18 @@ sleep 2
 echo "CREATE TABLE virtual_domains (id  INT NOT NULL AUTO_INCREMENT,
 name VARCHAR(50) NOT NULL, PRIMARY KEY (id) ) ENGINE=InnoDB DEFAULT CHARSET=utf8;"
 sleep 2
-echo "CREATE TABLE virtual_users (id INT NOT NULL AUTO_INCREMENT, domain_id INT NOT NULL,
-password VARCHAR(106) NOT NULL, email VARCHAR(120) NOT NULL, PRIMARY KEY (id),
-UNIQUE KEY email (email), FOREIGN KEY (domain_id) REFERENCES virtual_domains(id) ON DELETE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8;"
+echo ""
 sleep 2
 echo "
 CREATE TABLE virtual_aliases (id INT NOT NULL AUTO_INCREMENT, domain_id INT NOT NULL,
 source varchar(100) NOT NULL, destination varchar(100) NOT NULL, PRIMARY KEY (id),
 FOREIGN KEY (domain_id) REFERENCES virtual_domains(id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8;") | mariadb
+
+echo "
+CREATE TABLE virtual (id INT NOT NULL AUTO_INCREMENT, domain varchar(100) NOT NULL, email varchar(100) NOT NULL, PRIMARY KEY (id),
+FOREIGN KEY (domain) REFERENCES virtual(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8;"
 
 #Adding in Data
 echo "Adding data to tables"
@@ -94,7 +96,8 @@ echo "
 INSERT INTO usermail.virtual_aliases (id, domain_id, source, destination)
 VALUES ('1', '1', '$alias_email1', '$email1'),
 ('2', '1', '$alias_email2', '$email1'),
-('3', '1', '$alias_email3', '$email1');") | mariadb
+('3', '1', '$alias_email3', '$email1'),
+('4', '1', '$email1', '$my_email');") | mariadb
 
 # Configure Postfix
 echo "Configuring Postfix"
@@ -103,7 +106,7 @@ cp /etc/postfix/main.cf /etc/postfix/main.cf.orig
 #Configure TLS
 postconf -e "smtpd_tls_cert_file=/etc/letsencrypt/live/$my_domain/fullchain.pem"
 postconf -e "smtpd_tls_key_file=/etc/letsencrypt/live/$my_domain/privkey.pem"
-postconf -e 'ssmtpd_use_tls=yes'
+postconf -e 'smtpd_use_tls=yes'
 postconf -e 'smtpd_tls_auth_only = yes'
 
 #Configure SMTP
@@ -245,17 +248,18 @@ userdb {
 " > /etc/dovecot/dovecot.conf
 
 #Housekeeping
+adduser $user1 -y
 mkdir /home/$user1/mail
 mkdir /home/$user1/mail/$my_domain
-groupadd -g 5000 $user1 
+groupadd -g 5000 $user1
 useradd -g $user1 -u 5000 $user1 -d /home/$user1/mail
 chown -R $user1:$user1 /home/$user1/mail
 
 # Modify mysql
 echo "
-driver = mariadb
-connect = host=localhost dbname=mail user=mail password=$my_password
-default_pass_schema = SHA512-CRYPT
+driver = mysql
+connect = host=localhost dbname=mail user=mail password='$my_password'
+default_pass_scheme = SHA512-CRYPT
 password_query = SELECT email as user, password FROM virtual_users WHERE email='%u';
 " > /etc/dovecot/dovecot-sql.conf.ext
 chown -R $user1:dovecot /etc/dovecot
@@ -267,6 +271,7 @@ service dovecot restart
 # Enable ports
 ufw allow 25
 ufw allow 587
+ufw allow 465
 ufw allow 993
 
 # Setting Up Spam Assassin
