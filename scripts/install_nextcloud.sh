@@ -13,6 +13,8 @@ while true ; do
     case "$1" in
         -e|--email)
             my_email=$2 ; shift 2 ;;
+        -p|--password)
+            my_password=$2 ; shift 2 ;;
         -d|--domain)
             my_domain=$2 ; shift 2;;
         --) shift ; break ;;
@@ -58,16 +60,16 @@ apt install php7.3 libapache2-mod-php7.3 php7.3-mysql -y
 (sleep 2
 echo "CREATE DATABASE nextcloud;"
 sleep 2
-echo "CREATE USER nextcloud IDENTIFIED BY 'Password';"
+echo "CREATE USER nextcloud IDENTIFIED BY '$my_password';"
 sleep 2
-echo "GRANT USAGE ON *.* TO 'nextcloud'@'localhost' IDENTIFIED BY 'Password';"
+echo "GRANT USAGE ON *.* TO 'nextcloud'@'localhost' IDENTIFIED BY '$my_password';"
 sleep 2
 echo "GRANT ALL privileges ON nextcloud.* TO 'nextcloud'@'localhost';"
 sleep 2
 echo "FLUSH PRIVILEGES;"
 ) | mariadb 
 
-echo "Database has been created. User=nextcloud, Password=Password, DatabaseName=nextcloud"
+echo "Database has been created. User=nextcloud, Password=$my_password, DatabaseName=nextcloud"
 
 # Installing Nextcloud
 echo "Setting up nextcloud"
