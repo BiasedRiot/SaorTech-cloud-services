@@ -78,10 +78,19 @@ FOREIGN KEY (domain_id) REFERENCES virtual_domains(id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8;") | mariadb
 
 echo "
-CREATE TABLE virtual (id INT NOT NULL AUTO_INCREMENT, domain varchar(100) NOT NULL, email varchar(100) NOT NULL, PRIMARY KEY (id),
-FOREIGN KEY (domain) REFERENCES virtual(id) ON DELETE CASCADE
+CREATE TABLE virtual_user (id INT NOT NULL AUTO_INCREMENT, domain_id INT NOT NULL, password VARCHAR(106) NOT NULL, email varchar(120) NOT NULL,
+PRIMARY KEY (id), UNIQUE KEY email (email), FOREIGN KEY (domain_id) REFERENCES virtual_domains(id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8;"
 
+CREATE TABLE `virtual_users` (
+`id` INT NOT NULL AUTO_INCREMENT,
+`domain_id` INT NOT NULL,
+`password` VARCHAR(106) NOT NULL,
+`email` VARCHAR(120) NOT NULL,
+PRIMARY KEY (`id`),
+UNIQUE KEY `email` (`email`),
+FOREIGN KEY (domain_id) REFERENCES virtual_domains(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8;
 #Adding in Data
 echo "Adding data to tables"
 (sleep 2
@@ -89,7 +98,7 @@ echo "INSERT INTO usermail.virtual_domains (id , name)
 VALUES ('1', '$my_domain');"
 sleep 2
 echo "
-INSERT INTO usermail.virtual_users (id, domain_id, password , email)
+INSERT INTO usermail.virtual_user (id, domain_id, password , email)
 VALUES ('1', '1', ENCRYPT('$my_password'), '$email1');"
 sleep 2
 echo "
