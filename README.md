@@ -12,7 +12,7 @@ git clone https://github.com/CoogyEoin/SaorTech-cloud-services.git
 
 ```
 
-Figure out which services you want (Discussed below) and add the neccessary values with CLI arguments (email, domain, user etc...)
+Figure out which services you want (Discussed below) and add the neccessary values with CLI arguments (email, domain, user etc...). I currently run the *install_mail_server_with_sll.sh* script as the other mail script has some issues and I prefer just signing in with a user on a minimal client.
 
 Then just run the script.
 

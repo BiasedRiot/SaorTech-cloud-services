@@ -42,10 +42,10 @@ debconf-set-selections <<< "postfix postfix/main_mailer_type string 'Internet Si
 apt install apache2 postfix postfix-mysql dovecot-core dovecot-imapd dovecot-lmtpd dovecot-pop3d dovecot-mysql spamassassin spamc -y
 
 echo "Setting up encryption"
-#apt install certbot -y 
-#service apache2 stop
-#certbot certonly --standalone -d $my_domain --redirect
-#service apache2 restart
+apt install certbot -y 
+service apache2 stop
+certbot certonly --standalone -d $my_domain --redirect
+service apache2 restart
 
 postfix stop
 
@@ -81,7 +81,7 @@ submission inet n       -       y       -       -       smtpd
   -o smtpd_tls_auth_only=yes
   -o smtpd_reject_unlisted_recipient=no
   -o smtpd_client_restrictions=permit_sasl_authenticated,reject
-  -o smtpd_recipient_restrictions=permit_mynetworks,permit_sasl_authenticated,reject
+  -o smtpd_recipient_restrictions=permit_sasl_authenticated, permit_mynetworks, reject_unauth_destination
   -o smtpd_relay_restrictions=permit_sasl_authenticated,reject
   -o milter_macro_daemon_name=ORIGINATING
 
@@ -270,3 +270,9 @@ service opendkim reload
 newaliases
 postfix start
 service dovecot restart
+
+echo "
+.
+.
+.
+Congradulations your email is finally set up. You can test it using telnet. Any errors will show up in /var/log/mail.log "
