@@ -2,7 +2,7 @@
 
 #Just a simple script for removing all the stuff so the mail_server script can be re-run
 
-TEMP=`getopt -o d: --long domain: -- "$@"`
+TEMP=`getopt -o d:u: --long domain: -- "$@"`
 eval set -- "$TEMP"
 
 while true ; do
@@ -25,6 +25,6 @@ echo "Removing DB"
 echo "DROP usermail;"
 sleep 2) | mariadb
 
-certbot delete --cert-name $my_domain
+#certbot delete --cert-name $my_domain
 
 
