@@ -25,16 +25,16 @@ Then just run the script.
 * Nextcloud (Storage/Calendar)
 * Mail server (Postfix and Dovecot)
 * Static Website/portfolio (Apache)
+* Git Server
 
 ## Services being added
 * Bit Warden
 * Media Centre
 * SimpleLogin
-* Git/ Ansible
+* Ansible
 * VPN (cringe)
 
 ## Additional Features To Add
 
-* Get mailserver fully operational (OpenDKIR, ports etc)
 * Add script for running specific scripts eg: only mail and nextcloud
 * Add support for additional Operating Systems and versions 
