@@ -34,6 +34,7 @@ ssh-rsa $public_key gsg-keypair
 mkdir -p /var/www/git/$repo_name.git
 cd /var/www/git/$repo_name.git
 git init --bare
+chown -R git:git /var/www/git 
 
 echo "Congrats your git server is good to go. Just push your local repo to git@gitserver:/var/www/git/$repo_name.git"
 
