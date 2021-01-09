@@ -4,18 +4,6 @@
 # prevents root login and PasswordAuthentication as this is ofter the target user of attackers and -
 # it is a security best practice to remove this anyway.
 
-# Specify your public SSH key to automatically set-up password-less login
-TEMP=`getopt -o p: --long public_key: -- "$@"`
-eval set -- "$TEMP"
-
-while true ; do
-    case "$1" in
-        -p|--public_key)
-            public_key=$2 ; shift 2;;
-        --) shift ; break ;;
-        *) echo "Internal error!" ; exit 1 ;;
-    esac
-done
 
 # Installing Fail2Ban
 echo "Setting up fail2ban"
@@ -59,18 +47,6 @@ systemctl enable fail2ban
 # Un-authorizing root login
 sed -i "s/PermitRootLogin yes/PermitRootLogin no/" /etc/ssh/sshd_config
 
-# Creating .ssh/authorized_keys folder
-mkdir /home/git/.ssh && chmod 700 /home/git/.ssh
-touch /home/git/.ssh/authorized_keys && chmod 600 /home/git/.ssh/authorized_keys
-
-# Checking if the public_key flag was specified and if so removing PasswordAthorization
-if [$public_key] then
-echo "
-ssh-rsa $public_key gsg-keypair
-" > /home/git/.ssh/authorized_keys
-
-sed -i "s/#PasswordAuthentication yes/PasswordAuthentication no/" /etc/ssh/sshd_config
-fi
 
 echo "Congradulations your SSH has had basic protection setup. "
 
