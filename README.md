@@ -38,5 +38,5 @@ Then just run the script.
 
 ## Additional Features To Add
 
+* Migrate to Ansible to support more platforms/ Operating Systems
 * Add script for running specific scripts eg: only mail and nextcloud
-* Add support for additional Operating Systems and versions 
