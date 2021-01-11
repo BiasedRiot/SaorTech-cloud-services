@@ -4,6 +4,26 @@
 # prevents root login and PasswordAuthentication as this is ofter the target user of attackers and -
 # it is a security best practice to remove this anyway.
 
+# The email address is for notificaitions. You need to include it.
+
+TEMP=`getopt -o e: --long email: -- "$@"`
+eval set -- "$TEMP"
+
+while true ; do
+    case "$1" in
+        -e|--email)
+            my_email=$2 ; shift 2;;
+        --) shift ; break ;;
+        *) echo "Internal error!" ; exit 1 ;;
+    esac
+done
+
+# Simple flag check
+if [ -z "$my_email" ] 
+then
+  echo "Email flag needs to be included"
+  exit 1
+fi
 
 # Installing Fail2Ban
 echo "Setting up fail2ban"
@@ -26,7 +46,7 @@ logencoding = auto
 enabled = false
 mode = normal
 filter = %(name)s[mode=%(mode)s]
-destemail = root@$my_domain
+destemail = $my_email
 sender = root@
 mta = sendmail
 protocol = tcp
