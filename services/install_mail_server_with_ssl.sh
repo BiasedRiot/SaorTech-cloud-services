@@ -260,7 +260,7 @@ echo "mail._domainkey.$my_domain $my_domain:mail:/etc/opendkim/keys/$user1/mail.
 
 mkdir /etc/opendkim/keys/$user1
 cd /etc/opendkim/keys/$user1
-opendkim-genkey -s usermail -d $my_domains
+opendkim-genkey -s usermail -d $my_domain
 chown opendkim:opendkim mail.private
 
 service opendkim restart
