@@ -6,6 +6,9 @@
 
 # The email address is for notificaitions. You need to include it.
 
+# Add your email within the quotes
+my_email=""
+
 TEMP=`getopt -o e: --long email: -- "$@"`
 eval set -- "$TEMP"
 
@@ -68,6 +71,6 @@ systemctl enable fail2ban
 sed -i "s/PermitRootLogin yes/PermitRootLogin no/" /etc/ssh/sshd_config
 
 
-echo "Congradulations your SSH has had basic protection setup. "
+echo "Congratulations your SSH has had basic protection setup. "
 
 
